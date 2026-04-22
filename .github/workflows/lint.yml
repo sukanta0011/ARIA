@@ -1,0 +1,22 @@
+name: lint test
+on: push
+
+jobs:
+  lint_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: installing uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Installing dependencies
+        run: uv sync
+
+      - name: Running ruff
+        run: uv run ruff check .
+
+      - name: Running mypy
+        run: uv run mypy .

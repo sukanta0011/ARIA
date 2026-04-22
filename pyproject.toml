@@ -1,0 +1,28 @@
+[project]
+name = "aria"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.13.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.2",
+    "pytest>=9.0.3",
+    "ruff>=0.15.11",
+]
+
+
+[tool.ruff]
+exclude = [".venv"]
+
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_def = true
