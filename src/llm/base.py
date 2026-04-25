@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from pydantic import Field, field_validator, BaseModel
-from typing import List, Dict
+from typing import Any
 from ..core.custom_errors import EmptyStringError
+from ..tools.tool_registry import ToolRegistry
 
 
 class ValidMessage(BaseModel):
@@ -16,12 +17,16 @@ class ValidMessage(BaseModel):
 
 
 class LLMResponse(BaseModel):
-    msg: str
+    msg: str | ValidMessage
     response_msg: str | None
     read_token: int | None = 0
     write_token: int | None = 0
     latency: float = 0.0
     tokens_per_sec: float = 0.0
+
+
+class LLMResponseTools(LLMResponse):
+    tools: Any | None = None
 
 
 class BaseLLM(ABC):
@@ -30,4 +35,5 @@ class BaseLLM(ABC):
 
     @abstractmethod
     async def complete_with_tools(
-            self, message: ValidMessage, tools: List[Dict]): ...
+            self, message: ValidMessage, tools: ToolRegistry
+                ) -> LLMResponseTools: ...

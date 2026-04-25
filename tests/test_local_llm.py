@@ -3,9 +3,10 @@ import asyncio
 from src.llm.ollama import OllamaLLM
 from src.llm.base import LLMResponse
 
+
 @pytest.fixture
 def llm():
-    return OllamaLLM(model="qwen3:0.6b", time_out=20)
+    return OllamaLLM()
 
 
 @pytest.mark.asyncio
