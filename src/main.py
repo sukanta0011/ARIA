@@ -33,7 +33,7 @@ async def main():
         llm = OllamaLLM(model="qwen3:0.6b"),
         tools = registry).run(query=q)
         for q in state.sub_questions]
-    
+
     state.research_states = await asyncio.gather(*jobs)
 
     for state in state.research_states:

@@ -29,7 +29,6 @@ class PlannerAgent(BaseModel):
             state.tokens_write += response.eval_count
             state.tokens_read += response.prompt_eval_count
             state.status = "completed"
-
         else:
             state.status = "error"
         return state
