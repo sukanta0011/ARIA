@@ -1,16 +1,16 @@
 from typing import Dict, List
-from .search.base import BaseSearchTool
+from .base import BaseTool
 
 
 class ToolRegistry:
     def __init__(self):
-        self._tools: Dict[str, BaseSearchTool] = {}
+        self._tools: Dict[str, BaseTool] = {}
 
-    def register(self, tool: BaseSearchTool):
+    def register(self, tool: BaseTool):
         """Adds a tool to the registry using its name as the key."""
         self._tools[tool.name] = tool
 
-    def get_tool(self, name: str) -> BaseSearchTool:
+    def get_tool(self, name: str) -> BaseTool:
         """Retrieves a tool, or raises a clear error if the LLM hallucinated a name."""
         if name not in self._tools:
             raise ValueError(f"Tool '{name}' not found in registry.")

@@ -1,25 +1,30 @@
 from typing import Dict, List, Tuple
-# from pydantic import BaseModel
+from pydantic import validate_call
 import asyncio
 import time
 from ollama import ChatResponse, AsyncClient
 from .base import BaseLLM
 from .base import ValidMessage, LLMResponse, LLMResponseTools
 # from ..tools.search.base import BaseSearchTool
-from ..tools.search.web_search import WebSearch
+from ..tools.web_search import WebSearch
 from ..tools.tool_registry import ToolRegistry
 from ..core.config import settings
+from ..agent.state import AgentState
 
 
 class OllamaLLM(BaseLLM):
-    def __init__(self) -> None:
-        self.model = settings.MODEL_NAME
+    def __init__(self, model: BaseLLM = settings.MODEL_NAME,
+                 timeout: int = settings.LLM_TIMEOUT) -> None:
+        self.model = model
         self.bouncer = asyncio.Semaphore(settings.MAX_PARALLEL_REQUESTS)
-        self.timeout = settings.LLM_TIMEOUT
         self.client = AsyncClient()
+        self.timeout = timeout
+        
 
-    async def _execute_chat(
-            self, message: List[Dict], tools: List[Dict] | None = None
+    @validate_call
+    async def execute_chat(
+            self, message: List[Dict], tools: List[Dict] | None = None,
+            think: str = "low", format: str = None
                 ) -> Tuple[ChatResponse, float] | Tuple[str, float]:
         async with self.bouncer:
             client = AsyncClient()
@@ -29,7 +34,8 @@ class OllamaLLM(BaseLLM):
                     client.chat(
                         model=self.model,
                         messages=message,
-                        think="low",
+                        think=think,
+                        format=format,
                         tools=tools
                     ),
                     timeout=self.timeout
@@ -51,7 +57,7 @@ class OllamaLLM(BaseLLM):
 
     async def complete(self, message: ValidMessage) -> LLMResponse:
         formatted_msg = [{"role": "user", "content": message}]
-        response, latency = await self._execute_chat(formatted_msg)
+        response, latency = await self.execute_chat(formatted_msg)
         if isinstance(response, ChatResponse):
             tps = self._get_tokens_per_sec(response)
 
@@ -71,57 +77,61 @@ class OllamaLLM(BaseLLM):
             )
 
     async def complete_with_tools(
-            self, message: ValidMessage, tools: ToolRegistry
-                ) -> LLMResponseTools:
-        history = [{"role": "user", "content": message}]
+            self, state: AgentState,
+            tools: ToolRegistry
+                ) -> AgentState:
+        state.history.append({"role": "user", "content": state.query})
 
-        response, latency = await self._execute_chat(
-            message=history, tools=tools.get_all_schemas())
+        for _ in range(settings.MAX_RECURSION_LIMIT):
+            response, latency = await self.execute_chat(
+                message=state.history, tools=tools.get_all_schemas())
+            state.total_latency += latency
+            state.iteration_count += 1
 
-        if isinstance(response, ChatResponse):
-            print(response.message.model_dump())
-            history.append(response.message.model_dump())
-            tps = self._get_tokens_per_sec(response)
-            response_msg = str(response.message.content).strip()
+            # print(state.history)
+            # print("-" * 100)
 
-            if not response.message.tool_calls:
-                return LLMResponseTools(
-                    msg=message,
-                    response_msg=response_msg,
-                    read_token=response.prompt_eval_count,
-                    write_token=response.eval_count,
-                    latency=latency,
-                    tokens_per_sec=tps,
-                    tools=response.message.tool_calls
-                )
+            if isinstance(response, ChatResponse):
+                # print(response.message.model_dump())
+                state.history.append(response.message.model_dump())
+                # tps = self._get_tokens_per_sec(response)
 
-            for call in response.message.tool_calls:
-                tool_name = call.function.name
-                args = call.function.arguments
+                if not response.message.tool_calls:
+                    state.final_answer = str(response.message.content).strip()
+                    state.tokens_write += response.eval_count
+                    state.tokens_read += response.prompt_eval_count
 
-                tool_instance = tools.get_tool(tool_name)
+                    return state
 
-                tool_result = await tool_instance.search(**args)
+                for call in response.message.tool_calls:
+                    tool_name = call.function.name
+                    args = call.function.arguments
 
-                history.append(
+                    tool_instance = tools.get_tool(tool_name)
+                    tool_result = await tool_instance.search(**args)
+
+                    state.history.append(
+                        {
+                            "role": "tool",
+                            "content": str(tool_result),
+                            "tool_name": call.function.name
+                        }
+                    )
+            else:
+                state.history.append(
                     {
-                        "role": "tool",
-                        "content": str(tool_result),
-                        "tool_name": call.function.name
+                        "role": "timeout",
+                        "contents": response,
                     }
                 )
-            return LLMResponseTools(
-                msg=message,
-                response_msg="Error: Unable to receive the answer",
-                latency=latency,
-            )
 
-        else:
-            return LLMResponseTools(
-                msg=message,
-                response_msg=response,
-                latency=latency,
+        state.history.append(
+                {
+                    "role": "error",
+                    "content": "Error: Unable to retrieved the answer",
+                }
             )
+        return state
 
 
 async def test_ollama():

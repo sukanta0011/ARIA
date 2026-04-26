@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Dict, Type, Any
 
 
-class BaseSearchTool(ABC):
+class BaseTool(ABC):
     name: str
     description: str
     args_schema: Type[BaseModel]

@@ -1,6 +1,7 @@
 from typing import Dict
 from pydantic import BaseModel, Field
-from .base import BaseSearchTool
+from datetime import datetime
+from .base import BaseTool
 
 
 class WebSearchArgs(BaseModel):
@@ -10,14 +11,18 @@ class WebSearchArgs(BaseModel):
         description="Number of resources to extract")
 
 
-class WebSearch(BaseSearchTool):
+class WebSearch(BaseTool):
     name = "web_search"
     description = "Search the internet for real-time news."
     args_schema = WebSearchArgs
 
 
     async def search(self, **kwargs) -> Dict:
-        return {"contents": "Temperature in prague is 20 degree C today",}
+        return {
+            "date": datetime.now(),
+            "temperature": "20 degree C",
+            "humidity": "55%",
+            "wind": "2km/h"}
 
 
 if __name__ == "__main__":

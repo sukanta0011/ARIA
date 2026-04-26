@@ -1,34 +1,45 @@
 import asyncio
 from .llm.ollama import OllamaLLM
-from .tools.search.web_search import WebSearch
+from .tools.web_search import WebSearch
+from .tools.RAG_search import RAGSearch
 from .tools.tool_registry import ToolRegistry
+from .agent.state import AgentState
+from .agent.researcher import ResearcherAgent
+from .agent.planner import PlannerAgent
+
+
+def create_tool_registry() -> ToolRegistry:
+    tools = ToolRegistry()
+    tools.register(WebSearch())
+    tools.register(RAGSearch())
+    return tools
 
 
 async def main():
-    tools = ToolRegistry()
-    tools.register(WebSearch())
+    registry = create_tool_registry()
+    state = AgentState(query="Search for the current weather in Prague.")
 
-    ollama = OllamaLLM()
+    planner = PlannerAgent(
+        llm=OllamaLLM(model="qwen3:0.6b", timeout=120)
+    )
+    await planner.run(state=state)
 
-    # coros = [
-    #     ollama.complete('How is the weather today in prague?'),
-    # ]
+    for question in state.sub_questions:
+        print(question)
+    print(state.total_latency)
+    
+    jobs = [
+        ResearcherAgent(
+        llm = OllamaLLM(model="qwen3:0.6b"),
+        tools = registry).run(query=q)
+        for q in state.sub_questions]
+    
+    state.research_states = await asyncio.gather(*jobs)
 
-    coros = [
-        ollama.complete_with_tools(
-            message = 'Search for the current weather in Prague. You can use the tools',
-            tools = tools,),
-    ]
-
-    responses = await asyncio.gather(*coros)
-
-    for r in responses:
-        print(r.response_msg)
-        print(r.latency)
-        print(r.tokens_per_sec)
-        print(r.tools)
-        print("_" * 80)
-
+    for state in state.research_states:
+        print(state.query)
+        print(state.final_answer)
+        print(state.total_latency)
 
 
 if __name__ == "__main__":
