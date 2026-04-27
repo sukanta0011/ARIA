@@ -27,15 +27,16 @@ class AgentState(BasicState):
     sub_questions: List[str] = Field(default_factory=list)
 
 
-class Questions(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    question: str
-    status: bool = False
+# class Questions(BaseModel):
+#     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+#     question: str
+#     status: bool = False
 
 
 class GraphState(TypedDict):
     query: str
-    sub_questions: Annotated[List[Questions], add]
+    sub_questions: Annotated[List[str], add]
+    failed_questions: List[str]
     timestamp: datetime
     tokens_read: Annotated[int, add]
     tokens_write: Annotated[int, add]

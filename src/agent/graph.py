@@ -4,6 +4,7 @@ from .state import GraphState
 from .nodes.planner import planner_node
 from .nodes.evaluator import evaluator_node
 from .nodes.researcher import route_to_research_node, research_node
+from .nodes.synthesizer import synthesizer_node
 
 
 workflow = StateGraph(GraphState)
@@ -11,6 +12,7 @@ workflow = StateGraph(GraphState)
 workflow.add_node("planner", planner_node)
 workflow.add_node("researcher", research_node)
 workflow.add_node("evaluator", evaluator_node)
+workflow.add_node("synthesizer", synthesizer_node)
 
 workflow.set_entry_point("planner")
 
@@ -18,7 +20,15 @@ workflow.add_conditional_edges(
     "planner", route_to_research_node, ["researcher"]
 )
 workflow.add_edge("researcher", "evaluator")
-workflow.add_edge("evaluator", END)
+workflow.add_conditional_edges(
+    "evaluator",
+    lambda x: x["next_step"],
+    {
+        "synthesize": "synthesizer",
+        "refine": "planner"
+    }
+)
+workflow.add_edge("synthesizer", END)
 
 app = workflow.compile()
 

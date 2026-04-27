@@ -11,8 +11,13 @@ from ...core.config import settings
 
 
 async def route_to_research_node(state: GraphState):
-    return [Send("researcher", {"query": q.question})
-            for q in state["sub_questions"]]
+    if state.get("failed_questions"):
+        target = state["failed_questions"]
+    else:
+        target = state["sub_questions"]
+    
+    return [Send("researcher", {"query": q})
+            for q in target]
 
 
 async def research_node(state: Dict):
