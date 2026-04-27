@@ -1,5 +1,7 @@
 from typing import Dict, List
 from .base import BaseTool
+from .web_search import WebSearch
+from .RAG_search import RAGSearch
 
 
 class ToolRegistry:
@@ -19,3 +21,13 @@ class ToolRegistry:
     def get_all_schemas(self) -> List[Dict]:
         """Easily get the 'Menu' to send to Ollama."""
         return [tool.get_tool_schema() for tool in self._tools.values()]
+
+
+def create_tool_registry() -> ToolRegistry:
+    tools = ToolRegistry()
+    tools.register(WebSearch())
+    tools.register(RAGSearch())
+    return tools
+
+
+tools = create_tool_registry()
