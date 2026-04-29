@@ -1,43 +1,37 @@
 import json
-from ..state import GraphState
+from ..state import GraphState, Question
 from ...llm.ollama import OllamaLLM
 
 
 async def evaluator_node(state: GraphState):
 
-    unanswered_question = []
+    unanswered_questions = []
+    unanswered_questions_ids = set()
     if state["iteration_count"] > 3:
         print("Maximum Iteration reached, Moving to Synthesizer")
-        return [{
-            "next_step": "synthesize"
-        }]
+        return {
+            "next_step": "synthesize",
+        }
 
+    # print("-" * 100)
     for res in state["research_states"]:
-        if res.status != "completed":
-            unanswered_question.append(res.query)
-        else:
-            prompt = (
-                f"question: {res.query}\n answer: {res.final_answer}\n. "
-                "Evaluate the answer based on the question and give "
-                "it a score between 1 to 10.\nResponse >> Score: ")
-            message = [{"role": "user", "content": prompt}]
+        if (res.status != "completed" or len(res.final_answer) <= 0) and\
+                res.question.question_id not in state["failed_question_ids"]:
+            # print(f"{res.question.question_id}: {res.question.question}")
+            unanswered_questions_ids.add(res.question.question_id)
+            unanswered_questions.append(
+                Question(question=res.question.question))
 
-            llm = OllamaLLM(model="qwen3:0.6b", timeout=200)
-            response, _ = await llm.execute_chat(message=message,format="json")
-
-            response_json = json.loads(response.message.content)
-            # print(response_json.items())
-            score = response_json.get("score")
-            if not score or score < 6:
-                unanswered_question.append(res.query)
-    
-    if len(unanswered_question) > 0:
-        print(f"{len(unanswered_question)} remain unanswered, Moving to Planner")
+    # print(state["failed_question_ids"])
+    # print("-" * 100)
+    if len(unanswered_questions) > 0:
+        print(f"{len(unanswered_questions)} remain unanswered, Moving to Planner")
         return {
                 "iteration_count": 1,
                 "next_step": "refine",
-                "failed_questions": unanswered_question
+                "question_registry": {
+                    q.question_id: q for q in unanswered_questions},
+                "failed_question_ids": unanswered_questions_ids
             }
     else:
-        return {"next_step": "synthesize", "failed_questions": []}
-
+        return {"next_step": "synthesize"}

@@ -5,6 +5,7 @@ from .nodes.planner import planner_node
 from .nodes.evaluator import evaluator_node
 from .nodes.researcher import route_to_research_node, research_node
 from .nodes.synthesizer import synthesizer_node
+from .nodes.critic import critic_node
 
 
 workflow = StateGraph(GraphState)
@@ -13,13 +14,15 @@ workflow.add_node("planner", planner_node)
 workflow.add_node("researcher", research_node)
 workflow.add_node("evaluator", evaluator_node)
 workflow.add_node("synthesizer", synthesizer_node)
+workflow.add_node("critic", critic_node)
 
 workflow.set_entry_point("planner")
 
 workflow.add_conditional_edges(
     "planner", route_to_research_node, ["researcher"]
 )
-workflow.add_edge("researcher", "evaluator")
+workflow.add_edge(
+    "researcher", "evaluator")
 workflow.add_conditional_edges(
     "evaluator",
     lambda x: x["next_step"],
@@ -28,14 +31,16 @@ workflow.add_conditional_edges(
         "refine": "planner"
     }
 )
-workflow.add_edge("synthesizer", END)
+workflow.add_edge("synthesizer", "critic")
+workflow.add_edge("critic", END)
 
 app = workflow.compile()
 
 
 async def test_graph():
     # Initial input
-    inputs = {"query": "What is the current weather Prague?"}
+    # inputs = {"query": "What is the current weather Prague?"}
+    inputs = {"query": "What is the current weather in czech republic?"}
 
     print("--- 🚀 Starting ARIA Graph Test ---")
 
@@ -47,9 +52,17 @@ async def test_graph():
             if node_name == "researcher":
                 # Remember: research_states is a list
                 last_res = state_update["research_states"][-1]
+                print(f"   -> Worker ID: '{last_res.worker_id}'")
                 print(f"   -> Finished Research for: '{last_res.query}'")
                 print(f"   -> Result: {last_res.final_answer}...")
                 print(f"   -> Latency: {(last_res.total_latency):.2f}s")
+            if node_name == "synthesizer":
+                print(f"   -> Final answer: {state_update['final_report']}")
+                print(f"   -> Latency: {state_update['total_latency']}")
+            if node_name == "critic":
+                print(f"   -> Final answer: {state_update['status']}")
+                print(f"   -> Latency: {state_update['total_latency']}")
+
 
     # # Final Summary
     # final_state = await app.ainvoke(inputs)

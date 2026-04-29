@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 import uuid
-from operator import add
-from typing import List, Dict, Any, TypedDict, Annotated
+from operator import add, ior
+from typing import List, Dict, Any, TypedDict, Annotated, Set
 from datetime import datetime
 
 
@@ -14,8 +14,15 @@ class BasicState(BaseModel):
     status: str = ""
 
 
+class Question(BaseModel):
+    question_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    question: str
+    status: bool = False
+
+
 class ResearchState(BasicState):
     worker_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    question: Question
     history: List[Dict[str, Any]] = Field(default_factory=list)
     tool_used: List[str] = Field(default_factory=list)
     iteration_count: int = 0
@@ -27,16 +34,11 @@ class AgentState(BasicState):
     sub_questions: List[str] = Field(default_factory=list)
 
 
-# class Questions(BaseModel):
-#     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-#     question: str
-#     status: bool = False
-
-
 class GraphState(TypedDict):
     query: str
-    sub_questions: Annotated[List[str], add]
-    failed_questions: List[str]
+    # sub_questions: Annotated[List[str], add]
+    question_registry: Annotated[Dict[str, Question], ior]
+    failed_question_ids: Annotated[Set[str], ior]
     timestamp: datetime
     tokens_read: Annotated[int, add]
     tokens_write: Annotated[int, add]

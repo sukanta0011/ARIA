@@ -1,6 +1,6 @@
 from typing import Dict
 from langgraph.constants import Send
-from ..state import GraphState, ResearchState
+from ..state import GraphState, ResearchState, Question
 from ...llm.ollama import OllamaLLM
 from ...tools.tool_registry import tools
 from pydantic import BaseModel, ConfigDict
@@ -11,11 +11,8 @@ from ...core.config import settings
 
 
 async def route_to_research_node(state: GraphState):
-    if state.get("failed_questions"):
-        target = state["failed_questions"]
-    else:
-        target = state["sub_questions"]
-    
+    target = [q for _, q in state["question_registry"].items() if not q.status]
+
     return [Send("researcher", {"query": q})
             for q in target]
 
@@ -29,6 +26,7 @@ async def research_node(state: Dict):
         "research_states": [result],
         "tokens_read": result.tokens_read,
         "tokens_write": result.tokens_write,
+        "question_registry": {result.question.question_id: result.question}
     }
 
 
@@ -38,8 +36,12 @@ class ResearcherAgent(BaseModel):
     llm: BaseLLM
     tools: ToolRegistry
 
-    async def run(self, query: str) -> ResearchState:
-        state = ResearchState(query=query)
+    async def run(self, query: Question) -> ResearchState:
+        state = ResearchState(
+            query=query.question,
+            question=query)
+        query.status = True
+
         prompt = f"{state.query}"
         state.history.append({"role": "user", "content": prompt})
 

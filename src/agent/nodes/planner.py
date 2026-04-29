@@ -5,11 +5,11 @@ from typing import List
 from ollama import ChatResponse
 import json
 from ...llm.base import BaseLLM
-from ..state import AgentState
+from ..state import AgentState, Question
 
 
 async def planner_node(state: GraphState):
-    if state.get("sub_questions"):
+    if state.get("question_registry"):
         return {"status": "planner skipped"}
 
     agent_state = AgentState(query=state["query"])
@@ -20,7 +20,7 @@ async def planner_node(state: GraphState):
     result = await planner.run(state=agent_state)
 
     return {
-        "sub_questions": result.sub_questions,
+        "question_registry": {q.question_id: q for q in result.sub_questions},
         "timestamp": result.timestamp,
         "tokens_read": result.tokens_read,
         "token_write": result.tokens_write,
@@ -66,10 +66,11 @@ class PlannerAgent(BaseModel):
             if "question" in key and isinstance(question_list, list):
                 for question in question_list:
                     if isinstance(question, str):
-                        all_question.append(question)
+                        all_question.append(Question(question=question))
                     elif isinstance(question, dict):
                         all_question.extend(
-                            [value for key, value in question.items()
+                            [Question(question=value)
+                             for key, value in question.items()
                              if "question" in key])
 
         return all_question
