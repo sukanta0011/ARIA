@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     MAX_PARALLEL_REQUESTS: int = Field(default=1)
 
     MAX_RECURSION_LIMIT: int = Field(default=5)
+    DATABASE_URL: str
+    REDIS_URL: str
 
 
 settings = Settings()
