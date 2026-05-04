@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from ...db.models import Job
+from ...db.models import Job, AgentTrace
 from ...db.session import get_db
 from ...db.repositories.job_repo import JobRepository
 from ...workers.research_task import run_research_task
@@ -10,7 +10,7 @@ from ...workers.research_task import run_research_task
 router = APIRouter()
 
 
-@router.post("/research")
+@router.post("/research", response_model=None)
 async def research_task(
     topic: str, db: AsyncSession = Depends(get_db)):
 
@@ -23,7 +23,7 @@ async def research_task(
     return {"job_id": job_id, "status": "pending"}
 
 
-@router.get("/research/{job_id}")
+@router.get("/research/{job_id}", response_model=None)
 async def get_status(
     job_id: str, db: AsyncSession = Depends(get_db)
         ) -> Job:
@@ -37,15 +37,15 @@ async def get_status(
     return job
 
 
-@router.get("/research/{job_id}/trace")
+@router.get("/research/{job_id}/trace", response_model=None)
 async def get_status(
     job_id: str, db: AsyncSession = Depends(get_db)
-        ) -> Job:
+        ) -> AgentTrace:
 
     repo = JobRepository(db)
-    job = await repo.get_job(job_id=job_id)
+    traces = await repo.get_traces(job_id=job_id)
 
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    if not traces:
+        raise HTTPException(status_code=404, detail="Traces are missing")
 
-    return job.traces
+    return traces
