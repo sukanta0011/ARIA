@@ -1,0 +1,36 @@
+service:
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=agentic_ai_db
+    volume:
+      postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+
+  worker:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/aria_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+  
+  api:
+    build: .
+    environment:
+      - docker_url=postgressql+asyncpg://user:pass@localhost/db_name
+      - redis_url=redis_url
+    ports:
+      - "8000:8000"
+    depends_on:
+      db
+      redis
+
+volume:
+  postgres_data
+  

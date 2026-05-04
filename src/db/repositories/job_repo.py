@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from ..models import Job, JobStatus
+from typing import Dict
+import uuid
+from ..models import Job, JobStatus, AgentTrace, JobResult
 
 
 class JobRepository:
@@ -22,3 +24,24 @@ class JobRepository:
     async def get_job(self, job_id: str) -> Job:
         result = await self.session.execute(select(Job).where(Job.id==job_id))
         return result.scalars().first()
+
+    async def save_trace(self, job_id: str, node_name: str, input_data: Dict, output_data: Dict):
+        new_track = AgentTrace(
+            id=str(uuid.uuid4()),
+            job_id=job_id,
+            node_name=node_name,
+            input=input_data,
+            output=output_data
+        )
+        self.session.add(new_track)
+        await self.session.commit()
+
+    async def save_result(self, job_id: str, report_data: Dict):
+        result = JobResult(
+            id=str(uuid.uuid4()),
+            job_id=job_id,
+            report=report_data
+        )
+        self.session.add(result)
+        await self.update_status(job_id, JobStatus.COMPLETE)
+        await self.session.commit()
