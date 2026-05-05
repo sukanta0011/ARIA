@@ -1,6 +1,19 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   db:
     image: postgres:16
+    container_name: postgres_db
     environment:
       - POSTGRES_USER=agent_db
       - POSTGRES_PASSWORD=agent_db
@@ -10,22 +23,26 @@ services:
 
   redis:
     image: redis:alpine
+    container_name: redis_broker
 
   worker:
     build: .
-    command: uv run celery -A src.workers.celery_app worker
+    command: uv run celery -A src.workers.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=postgresql+asyncpg://agent_db:agent_db@db/agentic_ai_db
       - REDIS_URL=redis://redis
+      - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       - db
       - redis
+      - ollama
   
   api:
     build: .
     environment:
       - DATABASE_URL=postgresql+asyncpg://agent_db:agent_db@db/agentic_ai_db
       - REDIS_URL=redis://redis
+      - OLLAMA_BASE_URL=http://ollama:11434
     ports:
       - "8000:8000"
     depends_on:
@@ -34,4 +51,5 @@ services:
 
 volumes:
   postgres_data:
+  ollama_data:
   

@@ -7,7 +7,12 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-cache
 
-COPY . .
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY entrypoint.sh .
+COPY alembic.ini .
+
+EXPOSE 8000
 
 RUN chmod +x entrypoint.sh
 

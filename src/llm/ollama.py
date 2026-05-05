@@ -10,6 +10,7 @@ from ..tools.web_search import WebSearch
 from ..tools.tool_registry import ToolRegistry
 from ..core.config import settings
 from ..agent.state import AgentState
+from ..core.config import settings
 
 
 class OllamaLLM(BaseLLM):
@@ -27,7 +28,7 @@ class OllamaLLM(BaseLLM):
             think: str = "low", format: str = None
                 ) -> Tuple[ChatResponse, float] | Tuple[str, float]:
         async with self.bouncer:
-            client = AsyncClient()
+            client = AsyncClient(host=settings.OLLAMA_BASE_URL)
             try:
                 start = time.perf_counter()
                 response: ChatResponse = await asyncio.wait_for(
@@ -36,7 +37,7 @@ class OllamaLLM(BaseLLM):
                         messages=message,
                         think=think,
                         format=format,
-                        tools=tools
+                        tools=tools,
                     ),
                     timeout=self.timeout
                 )
