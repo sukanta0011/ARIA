@@ -6,6 +6,8 @@ curl http://localhost:11434/api/tags
 
 - pull model
 ollama pull qwen3:8b
+- inside docker
+docker exec -it ollama ollama pull qwen3:0.6b
 
 - run model
 ollama run qwen3:8b
