@@ -16,17 +16,29 @@ class JobStatus(str, enum.Enum):
 class Base(DeclarativeBase):
     pass
 
+class Tenant(Base):
+    __tablename__ = "tenants"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    api_key = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    jobs = relationship("Job", back_populates="tenant")
+
 
 class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(String, primary_key=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
     status = Column(Enum(JobStatus), nullable=False)
     topic = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(
         DateTime, default=datetime.now, onupdate=datetime.now)
     
+    tenant = relationship("Tenant", back_populates="jobs")
     result = relationship("JobResult", back_populates="job", uselist=False)
     traces = relationship("AgentTrace", back_populates="job")
 

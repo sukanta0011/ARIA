@@ -7,11 +7,12 @@ from ..models import Job, JobStatus, AgentTrace, JobResult
 
 
 class JobRepository:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, tenant_id: str):
         self.session = session
+        self.tenant_id = tenant_id
 
     async def create_job(self, job_id: str, topic: str) -> Job:
-        new_job = Job(id=job_id, topic=topic, status=JobStatus.PENDING)
+        new_job = Job(id=job_id, topic=topic, status=JobStatus.PENDING, tenant_id=self.tenant_id)
         self.session.add(new_job)
         await self.session.commit()
         await self.session.refresh(new_job)
@@ -19,17 +20,20 @@ class JobRepository:
     
     async def update_status(self, job_id: str, status: JobStatus) -> None:
         await self.session.execute(
-            update(Job).values(status = status).where(Job.id==job_id))
+            update(Job).values(status = status)
+            .where(Job.id==job_id, Job.tenant_id==self.tenant_id))
         await self.session.commit()
 
     async def get_job(self, job_id: str) -> Job:
-        result = await self.session.execute(select(Job).where(Job.id==job_id))
+        result = await self.session.execute(select(Job)
+                    .where(Job.id==job_id, Job.tenant_id==self.tenant_id))
         return result.scalars().first()
-    
+
     async def get_traces(self, job_id: str) -> AgentTrace:
         result = await self.session.execute(
             select(Job).options(
-                selectinload(Job.traces)).where(Job.id==job_id))
+                selectinload(Job.traces))
+                .where(Job.id==job_id, Job.tenant_id==self.tenant_id))
 
         return result.scalars().first()
 

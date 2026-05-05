@@ -17,6 +17,14 @@ ollama list
 ollama ps
 ollama rm qwen3:8b (delete model)
 
-### Docker setup
+
+### Migration
+
+
+### Issures
+- Serialization problem
+All pydantic model should be serialized to dict before saving to db
+
+- Docker setup
 Very important
-local environment and ocker is different, so what ever service is running, we should always keep defau;l to local host and docker to the docker container name,
+local environment and ocker is different, so what ever service is running, we should always keep default to local host and docker to the docker container name,
