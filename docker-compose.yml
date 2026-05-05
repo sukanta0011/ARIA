@@ -13,6 +13,7 @@ services:
 
   worker:
     build: .
+    command: uv run celery -A src.workers.celery_app worker
     environment:
       - DATABASE_URL=postgresql+asyncpg://agent_db:agent_db@db/agentic_ai_db
       - REDIS_URL=redis://redis
