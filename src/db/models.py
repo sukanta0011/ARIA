@@ -16,6 +16,7 @@ class JobStatus(str, enum.Enum):
 class Base(DeclarativeBase):
     pass
 
+
 class Tenant(Base):
     __tablename__ = "tenants"
 

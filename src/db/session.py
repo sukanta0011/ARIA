@@ -5,7 +5,7 @@ from ..core.config import settings
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    poolclass=NullPool)
+    poolclass=NullPool) # BullPool make sure the creation of new session
 async_session = async_sessionmaker(bind=engine)
 
 
