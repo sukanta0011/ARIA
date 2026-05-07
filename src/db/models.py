@@ -4,6 +4,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, relationship
 from datetime import datetime
 import enum
+import uuid
 
 
 class JobStatus(str, enum.Enum):

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi.security import APIKeyHeader
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,17 +13,22 @@ from ...workers.research_task import run_research_task
 router = APIRouter()
 
 
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+
+
 async def verify_api_key(
-    authorization: Optional[str] = Header(None),
+    authorization: str = Depends(api_key_header),
     db: AsyncSession = Depends(get_db)
-        ):
-    # tenant_repo = TenantRepository(db)
-    # tenant = await tenant_repo.get_tenant_id(name=name, api_key=api_key)
-    # if not tenant:
-    #     raise HTTPException(status_code=401,
-    #     detail="Invalid API key or name combination")
-    # return tenant
-    print(authorization)
+        ) -> Tenant:
+
+    # print(f"tenant: {x_tenant_name}")
+    # print(f"api_hash: {authorization}")
+    tenant_repo = TenantRepository(db)
+    tenant = await tenant_repo.get_tenant_id(api_key=authorization)
+    if not tenant:
+        raise HTTPException(status_code=401,
+        detail="Invalid API key")
+    return tenant
 
 
 async def get_job_repo(
@@ -40,7 +46,7 @@ async def research_task(
 
     job_id = str(uuid.uuid4())
     await repo.create_job(job_id, topic)
-    run_research_task.delay(job_id, topic) ## Move job to Redis the Celery
+    run_research_task.delay(job_id, repo.tenant_id, topic) ## Move job to Redis the Celery
     return {"job_id": job_id, "status": "pending"}
 
 

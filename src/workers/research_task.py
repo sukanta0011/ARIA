@@ -7,21 +7,20 @@ from ..agent.graph import app
 
 
 @celery_app.task(name="src.workers.research_task.run_research_task")
-def run_research_task(job_id: str, topic: str):
+def run_research_task(job_id: str, tenant_id: str, topic: str):
     # loop = asyncio.get_event_loop()
     # return loop.run_until_complete(execute_agents(job_id, topic))
     try:
         # asyncio.run() creates the loop, runs the coro, and shuts down the loop
-        return asyncio.run(execute_agents(job_id, topic))
+        return asyncio.run(execute_agents(job_id, tenant_id, topic))
     except Exception as e:
-        # Log the error so you can see it in 'docker compose logs'
         print(f"Task failed for job {job_id}: {str(e)}")
         raise e
 
 
-async def execute_agents(job_id: str, topic: str):
+async def execute_agents(job_id: str, tenant_id: str, topic: str):
     async with async_session() as session:
-        repo = JobRepository(session)
+        repo = JobRepository(session, tenant_id)
 
         await repo.update_status(
             job_id, status=JobStatus.RUNNING)

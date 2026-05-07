@@ -4,6 +4,7 @@ from typing import Dict
 import uuid
 from passlib.context import CryptContext
 from typing import Dict
+import bcrypt
 from ..models import Tenant
 
 
@@ -15,24 +16,28 @@ class TenantRepository:
         self.session = session
 
     async def register_tenant(self, tenant_id: str, name: str) -> Dict:
-        key = f"{tenant_id}.{uuid.uuid4()}"
+        key = str(uuid.uuid4())
         key_hash = pwd_hasher.hash(key)
         new_tenant = Tenant(
-            tenant_id=tenant_id,
+            id=tenant_id,
             name=name,
             api_key=key_hash)
 
         self.session.add(new_tenant)
         await self.session.commit()
-        return {"api_key": key}
+        return {"api_key": f"{tenant_id}.{key}"}
 
-    async def get_tenant_id(self, name: str, api_key: str) -> Tenant | None:
-        tenant = api_key.split(".")
-        tenant = await self.session.execute(
+    async def get_tenant_id(self, api_key: str) -> Tenant | None:
+        tenant_id_keys = api_key.split(".")
+        tenant_obj = await self.session.execute(
             select(Tenant)
-            .where(Tenant.id == tenant[0], Tenant.name == name))
+            .where(Tenant.id==tenant_id_keys[0]))
         
-        if tenant and pwd_hasher.verify(api_key, tenant.api_key):
-            return tenant
+        tenant = tenant_obj.scalars().first()
+        if not tenant:
+            return None
+
+        if not pwd_hasher.verify(tenant_id_keys[1], tenant.api_key):
+            return None
         
-        return None
+        return tenant
